@@ -1,9 +1,9 @@
 """Tone test: does EmbeddingGemma 2 audio separate irritated speech from calm speech?
 
 Data: HaessigDB (CC-BY-4.0), call-center clips rated 1-10 for annoyance,
-frustration and aggression. Usage: python eval_tone.py <haessig_dir>
+frustration and aggression. Usage: python eval_tone.py <dir with all_ratings.csv and audio/>
 """
-import sys, time, glob, os
+import sys, time, os
 import numpy as np, pandas as pd, librosa
 from scipy.stats import spearmanr
 from sklearn.metrics import roc_auc_score
@@ -34,9 +34,9 @@ def report(name, score, rating, hi, lo):
 
 
 def main():
-    csv = glob.glob(os.path.join(ROOT, "**", "all_ratings*.csv"), recursive=True)[0]
-    df = pd.read_csv(csv)
-    df["path"] = [glob.glob(os.path.join(ROOT, "**", f), recursive=True)[0] for f in df.file_name]
+    df = pd.read_csv(os.path.join(ROOT, "all_ratings.csv"))
+    df["path"] = [os.path.join(ROOT, "audio", f) for f in df.file_name]
+    df = df[df.path.map(os.path.exists)].reset_index(drop=True)  # 1068 rows, 888 clips ship
     df["irritation"] = df[["annoyance", "frustration", "aggression"]].mean(axis=1)
     rating = df.irritation.to_numpy()
     hi, lo = rating >= np.quantile(rating, 0.75), rating <= np.quantile(rating, 0.25)
@@ -61,7 +61,13 @@ def main():
     report("prosody: loudness", rms, rating, hi, lo)
     report("prosody: pitch spread", f0sd, rating, hi, lo)
 
-    # Tone, not words: same transcript, different delivery. Does audio rank the more irritated take higher?
+    # Tone, not words: remove what the transcript explains, then check what audio adds.
+    t_score = T @ q[0] - T @ q[1]
+    resid = rating - np.polyval(np.polyfit(t_score, rating, 1), t_score)
+    print(f"audio vs rating left after words: spearman={spearmanr(s_audio := A @ q[0] - A @ q[1], resid).statistic:+.3f}")
+    print(f"loudness vs rating left after words: spearman={spearmanr(rms, resid).statistic:+.3f}")
+
+    # Same transcript: same transcript, different delivery. Does audio rank the more irritated take higher?
     s = A @ q[0] - A @ q[1]
     wins = total = 0
     for _, g in df.assign(s=s).groupby("transcript"):
