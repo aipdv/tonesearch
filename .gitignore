@@ -4,3 +4,5 @@ data/
 *.npy
 .DS_Store
 .no-mistakes.yaml
+.claude/handoff/
+.claude/
