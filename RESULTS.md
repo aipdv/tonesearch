@@ -31,3 +31,16 @@ Speed: EG2 audio 41x real time (MPS). emotion2vec+ base 30x real time.
 - emotion2vec license is FunASR "model-license". Check commercial terms before a paid product.
 
 Scripts: `eval_tone.py`, `probe_tone.py`, `probe_e2v.py`.
+
+## MVP speed and check (2026-10-09)
+
+Demo: 38 HaessigDB calls joined into whole-call WAVs, 60 min of speech, 1176 segments (silence split, 2-10 s).
+
+| Device | EG2 audio | emotion2vec+ | Both (index time) |
+|---|---|---|---|
+| M3, EG2 on MPS, emotion2vec on CPU | | | 18x real time |
+| M3, all CPU (5 calls, 7.7 min) | 3.8x real time | 33.6x real time | 3.4x real time |
+
+On CPU, EG2 is the bottleneck. ONNX int8 for the EG2 audio encoder is the next speed step.
+
+Self-check (`test_tonesearch.py`): tone-only "angry" search, mean irritation rating of the top 10 segments = 7.19, bottom 10 = 3.63.

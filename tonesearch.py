@@ -108,6 +108,9 @@ def ui(index_dir):
         y = load(ix["path"][i])
         return SR, y[int(ix["start"][i] * SR):int(ix["end"][i] * SR)]
 
+    def on_select(df, e: gr.SelectData):
+        return play(df, e.index[0])
+
     def timeline(call, tone):
         m = ix["path"] == call
         t = ix["tone"][m, list(ix["labels"]).index(tone)]
@@ -127,17 +130,17 @@ def ui(index_dir):
             seg = gr.Audio(label="Segment")
             go.click(run_search, [q, tone, w], [hits, seg])
             q.submit(run_search, [q, tone, w], [hits, seg])
-            hits.select(lambda df, e: play(df, e.index[0]), hits, seg)
+            hits.select(on_select, hits, seg)
         with gr.Tab("Timeline"):
             with gr.Row():
-                call = gr.Dropdown(calls, value=calls[0], label="Call")
+                call = gr.Dropdown([(os.path.basename(c), c) for c in calls], value=calls[0], label="Call")
                 tl_tone = gr.Dropdown(labels, value="angry", label="Tone")
             plot = gr.LinePlot()
             spikes = gr.Dataframe(label="Top 3 spikes (seconds)", interactive=False)
             player = gr.Audio(type="filepath", label="Full call")
             for ev in (call.change, tl_tone.change, app.load):
                 ev(timeline, [call, tl_tone], [plot, spikes, player])
-    app.launch()
+    app.launch(allowed_paths=sorted({os.path.dirname(c) for c in calls}))
 
 
 def main():
