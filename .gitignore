@@ -6,3 +6,4 @@ data/
 .no-mistakes.yaml
 .claude/handoff/
 .claude/
+*.egg-info/

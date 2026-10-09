@@ -1,0 +1,19 @@
+[project]
+name = "tonesearch"
+version = "0.1.0"
+description = "Search call audio by what was said and how it was said."
+requires-python = ">=3.10"
+dependencies = [
+  "sentence-transformers>=5", "transformers>=5", "torch", "torchvision", "pillow",
+  "funasr", "librosa", "soundfile", "numpy", "pandas", "gradio",
+]
+
+[project.scripts]
+tonesearch = "tonesearch:main"
+
+[tool.setuptools]
+py-modules = ["tonesearch"]
+
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
