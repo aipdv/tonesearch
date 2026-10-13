@@ -52,3 +52,10 @@ cd ~/Coding/tonesearch
 - `humanizer` before the DEV post or any public text.
 - `huggingface-best` when building the HF Space.
 - `no-mistakes` before pushing larger changes.
+
+## Update 2026-10-13
+- Live demo (static, in-browser): https://huggingface.co/spaces/pradachan/tonesearch
+- Repo is now public: https://github.com/aipdv/tonesearch
+- DEV post saved as an UNPUBLISHED draft (account noreplycareerscoutai). User must set AI Disclosure and click Publish before Oct 18.
+- After the DEV post is live: publish post/hf-blog.md as a Hugging Face community blog (humanized, no em dashes).
+- First-user section dropped by user choice.
