@@ -40,7 +40,18 @@ tonesearch ui <haessig dir>/index
 
 License note: emotion2vec+ uses the FunASR model license. Check its commercial terms before a paid product.
 
-## Hugging Face Space (demo, not deployed)
+## Static Space (live)
+
+Live demo: https://huggingface.co/spaces/pradachan/tonesearch. `space-static/` is one `index.html`. It embeds the query in the browser (transformers.js, EmbeddingGemma 2 ONNX q4) and ranks precomputed audio embeddings and tone scores. Build the data, then upload:
+
+```sh
+python -I space-static/build.py      # needs space/index and space/calls (below)
+python -I -c "from huggingface_hub import HfApi; HfApi().upload_folder(repo_id='<hf user>/tonesearch', repo_type='space', folder_path='space-static')"
+```
+
+`hf upload` re-creates the repo as Gradio and fails with 402 on free accounts, so upload with the Python API after `hf repos create <hf user>/tonesearch --repo-type space --space-sdk static`.
+
+## Gradio Space (not deployed, needs HF PRO)
 
 `space/` holds `app.py`, `requirements.txt` and the Space README. The demo data is gitignored. Build it, then deploy:
 

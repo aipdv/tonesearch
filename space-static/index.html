@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>tonesearch</title>
+<style>
+  body { font: 15px/1.4 system-ui, sans-serif; max-width: 900px; margin: 2em auto; padding: 0 1em; color: #222; }
+  h1 { margin: 0 0 .2em; }
+  .row { display: flex; gap: 1em; flex-wrap: wrap; align-items: end; margin: 1em 0; }
+  label { display: flex; flex-direction: column; font-size: 13px; color: #555; gap: .3em; }
+  input[type=text] { width: 22em; padding: .4em; }
+  select, button, input { font: inherit; }
+  button { padding: .4em 1.2em; cursor: pointer; }
+  .tabs button[aria-selected=true] { font-weight: bold; border-bottom: 2px solid #4f46e5; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { text-align: left; padding: .3em .6em; border-bottom: 1px solid #eee; }
+  tbody tr { cursor: pointer; }
+  tbody tr:hover, tr.playing { background: #eef2ff; }
+  #status { color: #666; font-size: 13px; }
+  svg { width: 100%; height: 220px; background: #fafafa; }
+  footer { margin-top: 2em; font-size: 12px; color: #777; }
+</style>
+</head>
+<body>
+<h1>tonesearch</h1>
+<p>Search 8 call recordings by <b>what</b> was said and <b>how</b> it was said. Runs in your browser. No transcript.</p>
+<p id="status">Loading data...</p>
+
+<div class="tabs row">
+  <button data-tab="search" aria-selected="true">Search</button>
+  <button data-tab="timeline" aria-selected="false">Timeline</button>
+</div>
+
+<section id="search">
+  <div class="row">
+    <label>What was said (optional)<input id="q" type="text" placeholder="customer wants a refund"></label>
+    <label>How it was said<select id="tone" class="tones"></select></label>
+    <label><span>Tone weight (<span id="wv">1.0</span>, 0 = words only)</span><input id="w" type="range" min="0" max="3" step="0.1" value="1"></label>
+    <button id="go">Search</button>
+  </div>
+  <table><thead><tr><th>#</th><th>call</th><th>start</th><th>end</th><th>score</th></tr></thead><tbody id="hits"></tbody></table>
+</section>
+
+<section id="timeline" hidden>
+  <div class="row">
+    <label>Call<select id="call"></select></label>
+    <label>Tone<select id="tl-tone" class="tones"></select></label>
+  </div>
+  <svg id="plot" viewBox="0 0 800 220" preserveAspectRatio="none"></svg>
+  <h3>Top 3 spikes</h3>
+  <table><thead><tr><th>start</th><th>end</th><th>log-odds</th></tr></thead><tbody id="spikes"></tbody></table>
+</section>
+
+<p><audio id="player" controls preload="none"></audio></p>
+
+<footer>
+  Demo audio: 8 calls from "HaessigDB: A Database of Irritable Speech with Intensity Grading" by Niklas Weller, Marc Christopher Grau and Ivo Blohm (2026),
+  <a href="https://doi.org/10.5281/zenodo.18745894">doi:10.5281/zenodo.18745894</a>, <a href="https://creativecommons.org/licenses/by/4.0/">CC-BY-4.0</a>.
+  Acted calls, not real customers. Sentence clips joined into whole calls.
+  Models: <a href="https://huggingface.co/google/embeddinggemma-2">google/embeddinggemma-2</a> (audio embeddings offline, query in browser via
+  <a href="https://huggingface.co/onnx-community/embeddinggemma-2-ONNX">onnx-community/embeddinggemma-2-ONNX</a> q4),
+  <a href="https://huggingface.co/emotion2vec/emotion2vec_plus_base">emotion2vec/emotion2vec_plus_base</a> (tone scores, offline; FunASR model license).
+</footer>
+
+<script type="module">
+import { pipeline } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.3.1";
+
+const $ = id => document.getElementById(id);
+const status = s => ($("status").textContent = s);
+const D = await (await fetch("data/segments.json")).json();
+const E = new Float32Array(await (await fetch("data/emb.bin")).arrayBuffer());
+const N = D.call.length;
+
+for (const sel of document.querySelectorAll(".tones")) sel.innerHTML = D.labels.map(l => `<option>${l}</option>`).join("");
+$("call").innerHTML = D.calls.map((c, i) => `<option value="${i}">${c}</option>`).join("");
+
+// Query model loads in the background; tone-only search works before it is ready.
+const device = navigator.gpu && (await navigator.gpu.requestAdapter().catch(() => null)) ? "webgpu" : "wasm";
+const files = {};
+const model = pipeline("feature-extraction", "onnx-community/embeddinggemma-2-ONNX", {
+  dtype: "q4", device,
+  progress_callback: p => {
+    if (p.status !== "progress") return;
+    files[p.file] = [p.loaded, p.total];
+    const [l, t] = Object.values(files).reduce((a, [l, t]) => [a[0] + l, a[1] + t], [0, 0]);
+    status(`Downloading EmbeddingGemma 2 query model (${device}): ${(l / 1e6).toFixed(0)} / ${(t / 1e6).toFixed(0)} MB. Tone-only search works now.`);
+  },
+});
+model.then(() => status(`Ready. Query model on ${device}.`), e => status(`Query model failed to load: ${e}. Tone-only search still works.`));
+status(`Downloading EmbeddingGemma 2 query model (${device})...`);
+
+const z = x => {
+  const m = x.reduce((a, b) => a + b, 0) / x.length;
+  const s = Math.sqrt(x.reduce((a, b) => a + (b - m) ** 2, 0) / x.length);
+  return x.map(v => (v - m) / (s + 1e-9));
+};
+
+async function search() {
+  const q = $("q").value.trim(), tone = $("tone").value, w = +$("w").value;
+  const t = z(D.tone[tone]);
+  let what = new Array(N).fill(0);
+  if (q) {
+    status("Embedding query...");
+    const ex = await model;
+    const v = (await ex(`task: search result | query: ${q}`, { pooling: "mean", normalize: true })).data;
+    what = z(Array.from({ length: N }, (_, i) => { let s = 0; for (let j = 0; j < D.dim; j++) s += E[i * D.dim + j] * v[j]; return s; }));
+    status(`Ready. Query model on ${device}.`);
+  }
+  const score = what.map((v, i) => v + w * t[i]);
+  const top = [...score.keys()].sort((a, b) => score[b] - score[a]).slice(0, 20);
+  $("hits").innerHTML = top.map((i, r) =>
+    `<tr data-i="${i}"><td>${r + 1}</td><td>${D.calls[D.call[i]]}</td><td>${D.start[i].toFixed(1)}</td><td>${D.end[i].toFixed(1)}</td><td>${score[i].toFixed(2)}</td></tr>`).join("");
+}
+
+// Play one segment: seek to start, pause at end.
+let stopAt = Infinity;
+const player = $("player");
+player.ontimeupdate = () => { if (player.currentTime >= stopAt) { player.pause(); stopAt = Infinity; } };
+function play(i, tr) {
+  document.querySelectorAll("tr.playing").forEach(r => r.classList.remove("playing"));
+  tr?.classList.add("playing");
+  const src = `calls/${D.calls[D.call[i]]}.mp3`;
+  if (!player.src.endsWith(src)) player.src = src;
+  stopAt = D.end[i];
+  const go = () => { player.currentTime = D.start[i]; player.play(); };
+  if (player.readyState) return go();
+  player.addEventListener("loadedmetadata", go, { once: true });
+  player.load();
+}
+for (const tb of ["hits", "spikes"]) $(tb).onclick = e => { const tr = e.target.closest("tr"); if (tr) play(+tr.dataset.i, tr); };
+
+function timeline() {
+  const c = +$("call").value, tone = $("tl-tone").value;
+  const idx = [...D.call.keys()].filter(i => D.call[i] === c);
+  const xs = idx.map(i => D.start[i]), ys = idx.map(i => D.tone[tone][i]);
+  const x0 = 0, x1 = Math.max(...idx.map(i => D.end[i])), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const X = x => 40 + (x - x0) / (x1 - x0) * 750, Y = y => 200 - (y - y0) / (y1 - y0 || 1) * 180;
+  $("plot").innerHTML =
+    `<polyline fill="none" stroke="#4f46e5" stroke-width="2" vector-effect="non-scaling-stroke" points="${xs.map((x, k) => `${X(x)},${Y(ys[k])}`).join(" ")}"/>` +
+    `<text x="2" y="20" font-size="11">${y1.toFixed(1)}</text><text x="2" y="200" font-size="11">${y0.toFixed(1)}</text>` +
+    `<text x="40" y="216" font-size="11">0 s</text><text x="760" y="216" font-size="11">${x1.toFixed(0)} s</text>` +
+    `<text x="400" y="14" font-size="11" text-anchor="middle">${tone} (log-odds) over time</text>`;
+  const top = [...idx].sort((a, b) => D.tone[tone][b] - D.tone[tone][a]).slice(0, 3);
+  $("spikes").innerHTML = top.map(i => `<tr data-i="${i}"><td>${D.start[i].toFixed(1)}</td><td>${D.end[i].toFixed(1)}</td><td>${D.tone[tone][i].toFixed(2)}</td></tr>`).join("");
+}
+
+for (const b of document.querySelectorAll(".tabs button")) b.onclick = () => {
+  for (const o of document.querySelectorAll(".tabs button")) { o.setAttribute("aria-selected", o === b); $(o.dataset.tab).hidden = o !== b; }
+};
+$("w").oninput = () => ($("wv").textContent = (+$("w").value).toFixed(1));
+$("go").onclick = search;
+$("q").onkeydown = e => e.key === "Enter" && search();
+$("call").onchange = $("tl-tone").onchange = timeline;
+timeline();
+search();
+</script>
+</body>
+</html>
