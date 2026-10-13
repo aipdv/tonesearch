@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/banner.png" alt="tonesearch: find the angry minute in your call recordings" width="100%"></p>
+
 # tonesearch
 
 Search call recordings by **what** was said and **how** it was said. Runs locally. No transcript needed.
