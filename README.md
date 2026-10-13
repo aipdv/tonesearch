@@ -39,3 +39,18 @@ tonesearch ui <haessig dir>/index
 ```
 
 License note: emotion2vec+ uses the FunASR model license. Check its commercial terms before a paid product.
+
+## Hugging Face Space (demo, not deployed)
+
+`space/` holds `app.py`, `requirements.txt` and the Space README. The demo data is gitignored. Build it, then deploy:
+
+```sh
+mkdir -p space/calls
+for c in actor1_call11 actor1_call13 actor2_call27 actor2_call28 actor3_call40 actor3_call45 actor4_call20 actor4_call21; do cp <haessig dir>/calls/$c.wav space/calls/; done
+(cd space && tonesearch index calls index)      # 8 calls, 241 segments, about 27 MB
+cp tonesearch.py space/
+hf repo create <hf user>/tonesearch --repo-type space --space-sdk gradio
+hf upload <hf user>/tonesearch space . --repo-type space
+```
+
+Index paths are stored relative to the index folder, so an index moves with its audio.

@@ -7,3 +7,6 @@ data/
 .claude/handoff/
 .claude/
 *.egg-info/
+space/calls/
+space/index/
+space/tonesearch.py

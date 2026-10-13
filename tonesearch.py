@@ -54,7 +54,7 @@ def index(audio_dir, index_dir):
         y = load(f)
         for s, e in segments(y):
             clips.append(y[s:e])
-            meta.append((os.path.abspath(f), s / SR, e / SR))
+            meta.append((os.path.relpath(f, index_dir), s / SR, e / SR))  # relative, so the index moves with its audio
     t0 = time.perf_counter()
     emb = eg2().encode([{"array": c, "sampling_rate": SR} for c in clips], batch_size=8,
                        normalize_embeddings=True, show_progress_bar=True)
@@ -72,7 +72,9 @@ def index(audio_dir, index_dir):
 
 @functools.cache
 def open_index(index_dir):
-    return dict(np.load(os.path.join(index_dir, "index.npz")))
+    ix = dict(np.load(os.path.join(index_dir, "index.npz")))
+    ix["path"] = np.array([os.path.normpath(os.path.join(os.path.abspath(index_dir), p)) for p in ix["path"]])
+    return ix
 
 
 def z(x):
@@ -81,7 +83,7 @@ def z(x):
 
 def tone_score(ix, tone):
     """Log-odds of `tone` vs the mean label. Raw softmax saturates at 1.0 (133 tied "angry" segments on the demo); the logit gap does not."""
-    lp = np.log(ix["tone"] + 1e-30)
+    lp = np.log(ix["tone"].astype(float) + 1e-30)  # float64: float32 shows as 5.289999961853027 in the UI
     return lp[:, list(ix["labels"]).index(tone)] - lp.mean(1)
 
 
