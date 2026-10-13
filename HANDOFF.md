@@ -59,3 +59,8 @@ cd ~/Coding/tonesearch
 - DEV post saved as an UNPUBLISHED draft (account noreplycareerscoutai). User must set AI Disclosure and click Publish before Oct 18.
 - After the DEV post is live: publish post/hf-blog.md as a Hugging Face community blog (humanized, no em dashes).
 - First-user section dropped by user choice.
+
+## Update 2026-10-14
+- DEV post LIVE: https://dev.to/noreplycareerscoutai/tonesearch-find-the-angry-minute-in-your-call-recordings-on-your-own-machine-43ep (cover = assets/banner.png, AI disclosure = Some AI).
+- PR #1 merged: logo + banner made with vectorcraft-cli (assets/).
+- HF community blog NOT published: /new-blog returns 403 for pradachan; HF docs list Blog Articles under paid plans. post/hf-blog.md is ready. Needs HF PRO or an eligible org.
