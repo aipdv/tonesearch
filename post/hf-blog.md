@@ -21,7 +21,7 @@ This post has the numbers, the method, and a small local tool (tonesearch) that 
 - Zero-shot scores: For EmbeddingGemma 2, the cosine between each clip and the text query "angry customer". For emotion2vec+, its "angry" score.
 - Linear probes: Ridge regression on the embeddings, leave-one-actor-out. The test voice is never in the training set.
 - Beyond words: I fit the same probe on the EmbeddingGemma 2 text embedding of each clip's transcript. Then I take the part of the irritation rating that the transcript does not explain. "Beyond words" is the Spearman correlation of each signal with that leftover. A signal that only knows the words scores near zero.
-- Loudness: Mean RMS, z-scored inside each call, as a simple baseline.
+- Loudness: mean RMS of each clip, as a simple baseline.
 - AUC compares the top 25% of clips by irritation with the bottom 25%.
 
 ## The results
