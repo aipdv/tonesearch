@@ -14,6 +14,9 @@ SR = ts.SR
 y = np.r_[np.ones(25 * SR), np.zeros(SR), np.ones(SR // 2)].astype(np.float32)
 assert all(e - s <= ts.MAX_S * SR for s, e in ts.segments(y)), "long speech is cut to MAX_S"
 
+t = ts.tone_score(ix, "angry")
+assert len(np.unique(np.sort(t)[-100:])) == 100, "top tone scores tie"
+
 order, _ = ts.search(idx, "", "angry", 1.0, k=len(ix["path"]))
 
 

@@ -44,3 +44,15 @@ Demo: 38 HaessigDB calls joined into whole-call WAVs, 60 min of speech, 1176 seg
 On CPU, EG2 is the bottleneck. ONNX int8 for the EG2 audio encoder is the next speed step.
 
 Self-check (`test_tonesearch.py`): tone-only "angry" search, mean irritation rating of the top 10 segments = 7.19, bottom 10 = 3.63.
+
+## Tone ties fixed (2026-10-13)
+
+emotion2vec returns softmax scores. On the demo, 133 of 1176 segments scored "angry" = 1.0, so the top of an angry search was a tie.
+Fix: rank on log-odds (log score minus the mean log score over labels). This is the model's logit gap, which does not saturate.
+
+| Tone-only "angry", all 1176 segments | Spearman with irritation | Top 10 mean | Top 50 mean | Unique scores in top 133 |
+|---|---|---|---|---|
+| Softmax score (before) | +0.50 | 7.19 | 6.76 | 76 |
+| Log-odds (now) | +0.52 | 7.54 | 6.82 | 133 |
+
+Self-check now prints: top 10 = 7.54, bottom 10 = 4.26 (ok).

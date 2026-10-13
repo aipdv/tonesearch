@@ -79,10 +79,16 @@ def z(x):
     return (x - x.mean()) / (x.std() + 1e-9)
 
 
+def tone_score(ix, tone):
+    """Log-odds of `tone` vs the mean label. Raw softmax saturates at 1.0 (133 tied "angry" segments on the demo); the logit gap does not."""
+    lp = np.log(ix["tone"] + 1e-30)
+    return lp[:, list(ix["labels"]).index(tone)] - lp.mean(1)
+
+
 def search(index_dir, query="", tone="angry", w=1.0, k=10):
     """Rank segments by z(cosine to query) + w * z(tone score). Empty query = tone only. Returns row indices, scores."""
     ix = open_index(index_dir)
-    t = ix["tone"][:, list(ix["labels"]).index(tone)]
+    t = tone_score(ix, tone)
     what = z(ix["emb"] @ eg2().encode(f"task: search result | query: {query}", normalize_embeddings=True)) if query else 0
     score = what + w * z(t)
     top = np.argsort(-score)[:k]
@@ -113,10 +119,10 @@ def ui(index_dir):
 
     def timeline(call, tone):
         m = ix["path"] == call
-        t = ix["tone"][m, list(ix["labels"]).index(tone)]
+        t = tone_score(ix, tone)[m]
         df = pd.DataFrame({"time": ix["start"][m], tone: t})
         spikes = pd.DataFrame({"start": ix["start"][m], "end": ix["end"][m], "score": t.round(2)}).nlargest(3, "score")
-        return gr.LinePlot(df, x="time", y=tone, y_lim=[0, 1]), spikes.round(1), call
+        return gr.LinePlot(df, x="time", y=tone, y_title=f"{tone} (log-odds)"), spikes.round(1), call
 
     with gr.Blocks(title="tonesearch") as app:
         gr.Markdown("# tonesearch\nSearch calls by **what** was said and **how** it was said.")
