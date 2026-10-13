@@ -120,12 +120,6 @@ The last is that the parts are swappable. When one model could not hear tone, I 
 
 A license caveat: emotion2vec+ uses the FunASR model license. I must check its commercial terms before I charge anyone.
 
-## My First User
-
-<!-- TODO: nobody has used it yet. Put it in front of one real call team, then write who they were, what they said, and if they would pay. Do not post this section empty. Remove it if there is no user by the deadline. -->
-
-TODO
-
 ## Prize Categories
 
 - Best Use of Gemma: EmbeddingGemma 2 is the search engine. It embeds call audio and text queries in one space, so you can search speech by meaning with no transcript.
