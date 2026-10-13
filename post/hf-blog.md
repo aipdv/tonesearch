@@ -65,14 +65,14 @@ score = z(cosine(query, segment)) + w * z(tone log-odds)
 
 `w = 0` searches by words only. An empty query searches by tone only. A Gradio UI shows the results, plays each segment, and plots the tone over one call.
 
-![Search for "customer wants a refund" with tone angry](img/search.png)
+![Search for "customer wants a refund" with tone angry](https://huggingface.co/spaces/pradachan/tonesearch/resolve/main/img/search.png)
 
-![Angry score over one call](img/timeline.png)
+![Angry score over one call](https://huggingface.co/spaces/pradachan/tonesearch/resolve/main/img/timeline.png)
 
 ## Run it locally
 
 ```sh
-git clone <repo URL>   # TODO-LINK: repo is private now
+git clone https://github.com/aipdv/tonesearch
 cd tonesearch
 pip install -e .
 tonesearch index <audio dir> <index dir>   # any .wav .mp3 .flac .m4a .ogg
@@ -90,7 +90,7 @@ python -I test_tonesearch.py <haessig dir>
 
 Speed on an M3 Mac: 18x real time with EmbeddingGemma 2 on the GPU (MPS), and 3.4x real time on CPU only. EmbeddingGemma 2 is the slow part on CPU. An int8 ONNX build of its audio encoder is the next step.
 
-<!-- TODO-LINK: Hugging Face Space demo URL, once deployed. -->
+There is also a [live demo](https://huggingface.co/spaces/pradachan/tonesearch) of 8 calls. It runs in your browser: the q4 ONNX build of EmbeddingGemma 2 (about 142 MB, through transformers.js) embeds your query locally, and the browser embedding matches the Python one at cosine 0.989.
 
 ## Limits
 

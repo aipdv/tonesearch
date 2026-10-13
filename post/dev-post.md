@@ -22,23 +22,23 @@ What they want is small: "show me the angry moments in this week's calls, and do
 
 ## Demo
 
-<!-- TODO-LINK: Hugging Face Space URL. The Space is built but not deployed yet. -->
+**Try it: [https://huggingface.co/spaces/pradachan/tonesearch](https://huggingface.co/spaces/pradachan/tonesearch)**
+
+The demo runs in your browser. The Gemma query model (about 142 MB, q4 ONNX through transformers.js) downloads once, then your query is embedded on your own machine. Tone-only search works while it loads. The query embedding in the browser matches the Python one at cosine 0.989.
 
 Search tab. The query is "customer wants a refund", tone "angry", tone weight 1.
 
-<!-- TODO-SCREENSHOT: upload post/img/search.png to DEV and replace this path -->
-![Search results for "customer wants a refund" with tone angry](img/search.png)
+![Search results for "customer wants a refund" with tone angry](https://huggingface.co/spaces/pradachan/tonesearch/resolve/main/img/search.png)
 
 Timeline tab. The angry score over one call, with the top 3 spikes.
 
-<!-- TODO-SCREENSHOT: upload post/img/timeline.png to DEV and replace this path -->
-![Angry score over one call, with the top 3 spikes](img/timeline.png)
+![Angry score over one call, with the top 3 spikes](https://huggingface.co/spaces/pradachan/tonesearch/resolve/main/img/timeline.png)
 
 The demo data is HaessigDB, a public set of acted call-center speech (CC-BY-4.0, by Niklas Weller, Marc Christopher Grau and Ivo Blohm). These are actors, not real customers.
 
 ## Code
 
-<!-- TODO-LINK: GitHub repo. It is private now. Make it public before you post. -->
+{% embed https://github.com/aipdv/tonesearch %}
 
 About 170 lines of Python in one file, plus a self-check:
 
@@ -119,10 +119,6 @@ The third is that I could look inside. I pulled the embeddings out and trained p
 The last is that the parts are swappable. When one model could not hear tone, I added a second one. When a better tone model comes out, I change one model name, and no vendor has to sign off.
 
 A license caveat: emotion2vec+ uses the FunASR model license. I must check its commercial terms before I charge anyone.
-
-## My Agent Session
-
-<!-- TODO: optional. Add a DevRelay session link, or remove this section. -->
 
 ## My First User
 
