@@ -6,6 +6,8 @@ authors:
 
 # EmbeddingGemma 2 hears the words in a call, not the tone. emotion2vec fills the gap.
 
+![tonesearch banner](https://raw.githubusercontent.com/aipdv/tonesearch/main/assets/banner.png)
+
 EmbeddingGemma 2 can embed raw audio and text into one vector space. I wanted to use that to search call recordings for angry customers, with a text query and no transcript. Before I built the tool, I tested whether the audio vector carries tone at all.
 
 It mostly does not. On a public set of rated call-center speech, the EmbeddingGemma 2 audio embedding predicts irritation exactly as well as an embedding of the transcript. Almost all of its signal comes from the words. A small speech-emotion model, emotion2vec+ base, picks up the tone with no training.
@@ -102,3 +104,5 @@ There is also a [live demo](https://huggingface.co/spaces/pradachan/tonesearch) 
 ## Why local
 
 Call audio is private data. Both models are open-weight and run on a laptop, so the audio never leaves the machine. Open weights also made this test possible. I needed the raw vectors and logits to run the probes. A hosted API that returns only a label would not have shown that the audio vector carries words and not tone.
+
+I also wrote up the product side of this, for the Hacktoberfest DEV challenge, [on DEV](https://dev.to/noreplycareerscoutai/tonesearch-find-the-angry-minute-in-your-call-recordings-on-your-own-machine-43ep).
