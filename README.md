@@ -1,4 +1,4 @@
-<p align="center"><img src="assets/banner.png" alt="tonesearch: find the angry minute in your call recordings" width="100%"></p>
+<p align="center"><img src="assets/banner.jpg" alt="tonesearch: find the angry minute in your call recordings" width="100%"></p>
 
 # tonesearch
 

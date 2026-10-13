@@ -6,7 +6,7 @@ authors:
 
 # EmbeddingGemma 2 hears the words in a call, not the tone. emotion2vec fills the gap.
 
-![tonesearch banner](https://raw.githubusercontent.com/aipdv/tonesearch/main/assets/banner.png)
+![tonesearch banner](https://raw.githubusercontent.com/aipdv/tonesearch/main/assets/banner.jpg)
 
 EmbeddingGemma 2 can embed raw audio and text into one vector space. I wanted to use that to search call recordings for angry customers, with a text query and no transcript. Before I built the tool, I tested whether the audio vector carries tone at all.
 
