@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="512" height="512" viewBox="0 0 512 512">
+  <title>logo-src.svg</title>
+  <g id="Layer_1" data-name="Layer 1">
+    <path d="M112 0 L400 0 C461.856 0 512 50.144 512 112 L512 400 C512 461.856 461.856 512 400 512 L112 512 C50.144 512 0 461.856 0 400 L0 112 C0 50.144 50.144 0 112 0 Z" fill="#1e1b4b"/>
+    <g>
+      <g>
+        <path d="M90 236 L90 276" fill="#000000" stroke="#a5b4fc" stroke-width="30" stroke-linecap="round"/>
+        <path d="M142 206 L142 306" fill="#000000" stroke="#a5b4fc" stroke-width="30" stroke-linecap="round"/>
+        <path d="M194 176 L194 336" fill="#000000" stroke="#a5b4fc" stroke-width="30" stroke-linecap="round"/>
+        <path d="M246 120 L246 392" fill="#000000" stroke="#f43f5e" stroke-width="30" stroke-linecap="round"/>
+        <path d="M298 196 L298 316" fill="#000000" stroke="#a5b4fc" stroke-width="30" stroke-linecap="round"/>
+      </g>
+      <path d="M398 256 C398 322.274 344.274 376 278 376 C211.726 376 158 322.274 158 256 C158 189.726 211.726 136 278 136 C344.274 136 398 189.726 398 256 Z" fill="none" stroke="#ffffff" stroke-width="28"/>
+      <path d="M364 342 L416 394" fill="#000000" stroke="#ffffff" stroke-width="40" stroke-linecap="round"/>
+    </g>
+  </g>
+</svg>
