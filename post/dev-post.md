@@ -18,7 +18,7 @@ The people I think would pay are small call teams and small agencies that run vo
 
 Big contact centers buy tools like Gong or Cresta for this. Those tools are built for large teams, and a five-person agency is not their customer. Some agencies also cannot upload customer calls to another company's cloud, because their clients forbid it.
 
-So the job is small and specific: "show me the angry moments in this week's calls, without sending the calls anywhere."
+What they want is small: "show me the angry moments in this week's calls, and don't send the calls anywhere."
 
 ## Demo
 
@@ -66,9 +66,9 @@ score = z(cosine to query) + w * z(tone score)
 
 ### Gemma alone did not hear the tone
 
-My first plan was simpler. I wanted EmbeddingGemma 2 to do everything. Embed the audio, then search for "angry customer" and let the audio carry the tone.
+My first plan was simpler. EmbeddingGemma 2 takes audio in, so I assumed it would hear an angry voice too. Embed the calls, search for "angry customer", done.
 
-I tested that before I built anything. HaessigDB has 888 clips, each rated 1 to 10 for irritation. I measured how well each signal tracks that rating. I also measured what is left after a transcript model explains what it can. I call that column "beyond words". For the trained probes, the test voice was never in the training set.
+I'm glad I tested that before building anything. HaessigDB has 888 clips, each rated 1 to 10 for irritation. I measured how well each signal tracks that rating. I also measured what is left after a transcript model explains what it can. I call that column "beyond words". For the trained probes, the test voice was never in the training set.
 
 | Signal | Spearman | Beyond words |
 |---|---|---|
@@ -79,17 +79,17 @@ I tested that before I built anything. HaessigDB has 888 clips, each rated 1 to 
 | emotion2vec+ "angry" score, no training | +0.54 | +0.54 |
 | emotion2vec+ and EmbeddingGemma 2 audio, trained probe | +0.66 | +0.45 |
 
-The audio embedding scored the same as the transcript embedding. So it hears the words, about as well as a transcript does. It adds almost nothing about tone. Plain loudness did better on tone.
+The audio embedding scored the same as the transcript embedding. It hears the words about as well as a transcript does, and it adds almost nothing about tone. Plain loudness, which is one line of librosa, did better on tone than Gemma did. That surprised me.
 
 emotion2vec+ caught tone with no training at all. Inside one call, its angry score follows the escalation (median Spearman +0.41 over 37 calls).
 
-So each model got one job. Gemma handles what was said. emotion2vec handles how it was said.
+So each model got one job: Gemma handles what was said, and emotion2vec handles how it was said.
 
 ### One more fix: ties at the top
 
 emotion2vec returns softmax scores. On the 60-minute demo, 133 of 1176 segments scored exactly 1.0 for "angry". The top of an angry search was a tie.
 
-The fix is small. I now rank on log-odds: the log score minus the mean log score over all labels. That is the model's own logit gap, and it does not saturate.
+The fix was small. I now rank on log-odds: the log score minus the mean log score over all labels. That is the model's own logit gap, and it does not saturate.
 
 | Tone-only "angry" search, 1176 demo segments | Spearman | Mean irritation, top 10 |
 |---|---|---|
@@ -104,16 +104,19 @@ On an M3 Mac, with Gemma on the GPU, indexing runs at 18x real time. On CPU only
 
 - The test data is acted and scripted. Real calls are noisier.
 - HaessigDB has only 4 actors.
-- No transcript and no speaker split. You hear the segment, you do not read it.
+- It has no transcript and does not split speakers. You hear each segment, but you cannot read it.
 
 ## Why Does Open Innovation Matter?
 
-Without open weights, I could not offer this to the people above. There are four reasons.
+Without open weights I could not sell this to the people above.
 
-1. Privacy. Call audio has names, account numbers and health details. With open weights, the models run where the audio already is. Nothing is uploaded. For many small agencies, that is the only way they can use a tool like this.
-2. Cost. There is no per-minute API fee. An M3 laptop CPU indexes a 5-minute call in about 90 seconds. The cost per call is close to zero, so a small flat monthly price could still leave a margin. I have not set a price yet.
-3. Testing. I could pull the embeddings out and run probes on them. That is how I found that Gemma audio hears words, not tone. A closed API gives you an answer, not the vectors and logits behind it.
-4. Swappable parts. When one model did not hear tone, I added a second one. When a better tone model comes out, I change one model name. No vendor has to agree.
+The first reason is privacy. Call audio is full of names, account numbers and sometimes health details. Open weights let the models run where the audio already lives, so nothing gets uploaded. For a lot of small agencies that is the only way a tool like this is allowed at all.
+
+The second is cost. There is no per-minute API fee. An M3 laptop CPU indexes a 5-minute call in about 90 seconds, so the cost per call is close to zero, and a small flat monthly price could still leave a margin. I have not picked a price yet.
+
+The third is that I could look inside. I pulled the embeddings out and trained probes on them, which is how I found that Gemma audio hears words and not tone. A closed API would have given me a score and nothing to check it against.
+
+The last is that the parts are swappable. When one model could not hear tone, I added a second one. When a better tone model comes out, I change one model name, and no vendor has to sign off.
 
 A license caveat: emotion2vec+ uses the FunASR model license. I must check its commercial terms before I charge anyone.
 
