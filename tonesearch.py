@@ -87,18 +87,25 @@ def tone_score(ix, tone):
     return lp[:, list(ix["labels"]).index(tone)] - lp.mean(1)
 
 
+def embed_query(query):
+    return eg2().encode(f"task: search result | query: {query}", normalize_embeddings=True)
+
+
 def search(index_dir, query="", tone="angry", w=1.0, k=10):
     """Rank segments by z(cosine to query) + w * z(tone score). Empty query = tone only. Returns row indices, scores."""
     ix = open_index(index_dir)
     t = tone_score(ix, tone)
-    what = z(ix["emb"] @ eg2().encode(f"task: search result | query: {query}", normalize_embeddings=True)) if query else 0
+    what = z(ix["emb"] @ embed_query(query)) if query else 0
     score = what + w * z(t)
     top = np.argsort(-score)[:k]
     return top, score[top]
 
 
+MAX_UPLOAD_S = 300  # ponytail: 5 min keeps one upload inside a free visitor's daily ZeroGPU quota
+
+
 def ui(index_dir):
-    import gradio as gr, pandas as pd
+    import gradio as gr, pandas as pd, shutil, tempfile
     ix = open_index(index_dir)
     labels = [l for l in ix["labels"] if l not in ("<unk>", "other")]
     calls = sorted(set(ix["path"]))
@@ -126,6 +133,21 @@ def ui(index_dir):
         spikes = pd.DataFrame({"start": ix["start"][m], "end": ix["end"][m], "score": t.round(2)}).nlargest(3, "score")
         return gr.LinePlot(df, x="time", y=tone, y_title=f"{tone} (log-odds)"), spikes.round(1), call
 
+    def run_upload(path, q, tone):
+        """Index one uploaded call in a temp dir, then show its tone timeline and top segments."""
+        if not path:
+            raise gr.Error("Upload a call first.")
+        if librosa.get_duration(path=path) > MAX_UPLOAD_S:
+            raise gr.Error(f"Calls up to {MAX_UPLOAD_S // 60} minutes, please.")
+        d = tempfile.mkdtemp()
+        shutil.copy(path, d)
+        index(d, os.path.join(d, "index"))
+        ux = open_index(os.path.join(d, "index"))
+        t = tone_score(ux, tone)
+        top, score = search(os.path.join(d, "index"), q, tone, 1.0, k=10)
+        plot = gr.LinePlot(pd.DataFrame({"time": ux["start"], tone: t}), x="time", y=tone, y_title=f"{tone} (log-odds)")
+        return plot, pd.DataFrame({"start": ux["start"][top].round(1), "end": ux["end"][top].round(1), "score": score.round(2)})
+
     with gr.Blocks(title="tonesearch") as app:
         gr.Markdown("# tonesearch\nSearch calls by **what** was said and **how** it was said.")
         with gr.Tab("Search"):
@@ -148,6 +170,15 @@ def ui(index_dir):
             player = gr.Audio(type="filepath", label="Full call")
             for ev in (call.change, tl_tone.change, app.load):
                 ev(timeline, [call, tl_tone], [plot, spikes, player])
+        with gr.Tab("Your call"):
+            up = gr.Audio(type="filepath", label=f"Upload a call (up to {MAX_UPLOAD_S // 60} min)")
+            with gr.Row():
+                up_q = gr.Textbox(label="What was said (optional)", placeholder="customer wants a refund")
+                up_tone = gr.Dropdown(labels, value="angry", label="How it was said")
+            up_go = gr.Button("Analyze", variant="primary")
+            up_plot = gr.LinePlot()
+            up_hits = gr.Dataframe(label="Top segments (seconds)", interactive=False)
+            up_go.click(run_upload, [up, up_q, up_tone], [up_plot, up_hits])
     app.launch(allowed_paths=sorted({os.path.dirname(c) for c in calls}))
 
 

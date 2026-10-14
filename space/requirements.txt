@@ -1,7 +1,9 @@
+spaces
+torch==2.13.0
+torchvision
 sentence-transformers>=5
 transformers>=5
-torch
-torchvision
+funasr
 pillow
 librosa
 soundfile
