@@ -1,7 +1,8 @@
 ---
 title: tonesearch
 colorFrom: indigo
-colorTo: red
+colorTo: purple
+thumbnail: https://raw.githubusercontent.com/aipdv/tonesearch/main/assets/banner.jpg
 sdk: gradio
 sdk_version: 6.30.0
 python_version: "3.12"
