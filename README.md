@@ -4,7 +4,7 @@
 
 Search call recordings by **what** was said and **how** it was said. Runs on your machine. No transcript step.
 
-**[Try the live demo](https://huggingface.co/spaces/pradachan/tonesearch)**: 8 acted support calls, runs in your browser.
+**[Try the live demo](https://huggingface.co/spaces/pradachan/tonesearch)**: search 8 acted support calls, or upload your own call (up to 5 min). Runs on a free ZeroGPU GPU.
 
 <p align="center"><img src="space-static/img/timeline.png" alt="Tone timeline for one call, with the angry spikes marked" width="80%"></p>
 
@@ -63,30 +63,23 @@ tonesearch ui <haessig dir>/index
 | `tonesearch.py` | Indexer, search, CLI, Gradio UI |
 | `make_demo.py`, `test_tonesearch.py` | Demo data builder and self-check |
 | `eval_tone.py`, `probe_*.py` | Research scripts behind RESULTS.md |
-| `space-static/` | The live in-browser demo (see its README to rebuild) |
-| `space/` | Gradio version of the demo |
+| `space/` | The live demo: Gradio on ZeroGPU |
+| `space-static/` | Older in-browser demo, no GPU (see its README to rebuild) |
 
 <details>
 <summary>Deploy the demo to Hugging Face</summary>
 
-Static Space (free tier). Build the data, create the Space, then upload with the Python API. `hf upload` re-creates the repo as Gradio and fails with 402 on free accounts.
-
-```sh
-python -I space-static/build.py                   # needs space/index and space/calls
-hf repos create <hf user>/tonesearch --repo-type space --space-sdk static
-python -I -c "from huggingface_hub import HfApi; HfApi().upload_folder(repo_id='<hf user>/tonesearch', repo_type='space', folder_path='space-static')"
-```
-
-Gradio Space (needs paid hardware). The demo data is gitignored, so build it first:
+ZeroGPU Gradio Space. Free accounts can host 2 ZeroGPU Spaces. The demo data is gitignored, so build it first:
 
 ```sh
 mkdir -p space/calls
 for c in actor1_call11 actor1_call13 actor2_call27 actor2_call28 actor3_call40 actor3_call45 actor4_call20 actor4_call21; do cp <haessig dir>/calls/$c.wav space/calls/; done
 (cd space && tonesearch index calls index)        # 8 calls, 241 segments, about 27 MB
 cp tonesearch.py space/
-hf repo create <hf user>/tonesearch --repo-type space --space-sdk gradio
-hf upload <hf user>/tonesearch space . --repo-type space
+python -I -c "from huggingface_hub import HfApi; a = HfApi(); r = '<hf user>/tonesearch'; a.create_repo(r, repo_type='space', space_sdk='gradio', space_hardware='zero-a10g', exist_ok=True); a.upload_folder(repo_id=r, repo_type='space', folder_path='space', ignore_patterns=['img/*'])"
 ```
+
+`space/app.py` loads both models on CUDA at startup and wraps the two GPU calls in `@spaces.GPU`. An upload asks for 20 s plus a tenth of the audio length, so a visitor's free daily quota covers it.
 
 Index paths are relative to the index folder, so an index moves with its audio.
 

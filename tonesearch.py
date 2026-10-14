@@ -87,18 +87,68 @@ def tone_score(ix, tone):
     return lp[:, list(ix["labels"]).index(tone)] - lp.mean(1)
 
 
+def embed_query(query):
+    return eg2().encode(f"task: search result | query: {query}", normalize_embeddings=True)
+
+
 def search(index_dir, query="", tone="angry", w=1.0, k=10):
     """Rank segments by z(cosine to query) + w * z(tone score). Empty query = tone only. Returns row indices, scores."""
     ix = open_index(index_dir)
     t = tone_score(ix, tone)
-    what = z(ix["emb"] @ eg2().encode(f"task: search result | query: {query}", normalize_embeddings=True)) if query else 0
+    what = z(ix["emb"] @ embed_query(query)) if query else 0
     score = what + w * z(t)
     top = np.argsort(-score)[:k]
     return top, score[top]
 
 
+# Look: dark violet, faint grid, film grain, one glowing lens. Matches assets/banner.svg.
+HERO = """<div id="hero">
+  <div class="mark"><svg width="34" height="34" viewBox="0 0 38 38" fill="none" stroke="#fff" stroke-linecap="round">
+    <circle cx="17" cy="17" r="14" stroke-width="2.6"/><line x1="27.5" y1="27.5" x2="36" y2="36" stroke-width="3.6"/>
+    <line x1="11" y1="14" x2="11" y2="20" stroke-width="2.6"/><line x1="17" y1="9.5" x2="17" y2="24.5" stroke="#fb7185" stroke-width="2.6"/>
+    <line x1="23" y1="13" x2="23" y2="21" stroke-width="2.6"/></svg><span>tonesearch</span></div>
+  <p class="tag">Find the angry minute in your call recordings.</p>
+  <p class="sub">Search calls by <b>what</b> was said and <b>how</b> it was said. Or upload your own call.</p>
+  <div class="lens"><svg viewBox="0 0 200 100" preserveAspectRatio="none"><polyline points="0,78 20,74 35,80 50,72 62,76 75,70 85,62 92,30 100,14 108,30 115,62 125,70 140,74 155,68 170,75 185,70 200,74"/></svg></div>
+</div>"""
+CSS = """
+html { background: #110e22 !important; }
+body { background: radial-gradient(900px 520px at 88% -8%, rgba(99,102,241,.38), transparent 60%),
+  radial-gradient(700px 420px at 105% 45%, rgba(124,58,237,.18), transparent 60%),
+  linear-gradient(135deg, #2b1f57 0%, #1b1638 55%, #110e22 100%) fixed !important; }
+body::before { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background-image: linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+  background-size: 40px 40px; }
+body::after { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 1000; opacity: .09;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+.gradio-container { background: transparent !important; width: 100% !important; max-width: 1080px !important; margin: 0 auto !important; position: relative; z-index: 1; }
+#hero { position: relative; padding: 36px 8px 28px; overflow: visible; }
+#hero .mark { display: flex; align-items: center; gap: 14px; }
+#hero .mark span { font-size: 46px; font-weight: 300; letter-spacing: -1.2px; color: #fff; }
+#hero .tag { margin: 44px 0 4px; font-size: 20px; color: #eef2ff; }
+#hero .sub { margin: 0; font-size: 15px; font-weight: 300; color: #a5a3c8; }
+#hero .lens { position: absolute; right: 40px; top: 22px; width: 170px; height: 170px; border-radius: 50%;
+  border: 2px solid #e0e7ff; background: rgba(15,12,36,.55); overflow: hidden;
+  box-shadow: 0 0 36px rgba(129,140,248,.55), inset 0 0 28px rgba(99,102,241,.35); }
+#hero .lens svg { position: absolute; left: 0; top: 30px; width: 100%; height: 100px; }
+#hero .lens polyline { fill: none; stroke: #fb7185; stroke-width: 2.2; vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 0 6px rgba(244,63,94,.8)); }
+@media (max-width: 720px) { #hero .lens { display: none; } }
+"""
+DARK = dict(body_background_fill="transparent", body_text_color="#e0e7ff", body_text_color_subdued="#a5a3c8",
+            background_fill_primary="#15122e", background_fill_secondary="#1b1638",
+            block_background_fill="rgba(21,18,46,.72)", block_border_color="rgba(165,180,252,.14)",
+            block_label_text_color="#a5a3c8", block_title_text_color="#c7d2fe", border_color_primary="rgba(165,180,252,.14)",
+            input_background_fill="rgba(15,12,36,.8)", input_border_color="rgba(165,180,252,.22)",
+            button_primary_background_fill="linear-gradient(90deg, #6366f1, #8b5cf6)", button_primary_text_color="#ffffff",
+            button_secondary_background_fill="rgba(99,102,241,.14)", button_secondary_text_color="#e0e7ff",
+            table_even_background_fill="#17142f", table_odd_background_fill="#1b1638", color_accent_soft="rgba(99,102,241,.25)")
+
+MAX_UPLOAD_S = 300  # ponytail: 5 min keeps one upload inside a free visitor's daily ZeroGPU quota
+
+
 def ui(index_dir):
-    import gradio as gr, pandas as pd
+    import gradio as gr, pandas as pd, shutil, tempfile
     ix = open_index(index_dir)
     labels = [l for l in ix["labels"] if l not in ("<unk>", "other")]
     calls = sorted(set(ix["path"]))
@@ -126,8 +176,23 @@ def ui(index_dir):
         spikes = pd.DataFrame({"start": ix["start"][m], "end": ix["end"][m], "score": t.round(2)}).nlargest(3, "score")
         return gr.LinePlot(df, x="time", y=tone, y_title=f"{tone} (log-odds)"), spikes.round(1), call
 
+    def run_upload(path, q, tone):
+        """Index one uploaded call in a temp dir, then show its tone timeline and top segments."""
+        if not path:
+            raise gr.Error("Upload a call first.")
+        if librosa.get_duration(path=path) > MAX_UPLOAD_S:
+            raise gr.Error(f"Calls up to {MAX_UPLOAD_S // 60} minutes, please.")
+        d = tempfile.mkdtemp()
+        shutil.copy(path, d)
+        index(d, os.path.join(d, "index"))
+        ux = open_index(os.path.join(d, "index"))
+        t = tone_score(ux, tone)
+        top, score = search(os.path.join(d, "index"), q, tone, 1.0, k=10)
+        plot = gr.LinePlot(pd.DataFrame({"time": ux["start"], tone: t}), x="time", y=tone, y_title=f"{tone} (log-odds)")
+        return plot, pd.DataFrame({"start": ux["start"][top].round(1), "end": ux["end"][top].round(1), "score": score.round(2)})
+
     with gr.Blocks(title="tonesearch") as app:
-        gr.Markdown("# tonesearch\nSearch calls by **what** was said and **how** it was said.")
+        gr.HTML(HERO)
         with gr.Tab("Search"):
             with gr.Row():
                 q = gr.Textbox(label="What was said (optional)", placeholder="customer wants a refund")
@@ -139,6 +204,7 @@ def ui(index_dir):
             go.click(run_search, [q, tone, w], [hits, seg])
             q.submit(run_search, [q, tone, w], [hits, seg])
             hits.select(on_select, hits, seg)
+            app.load(run_search, [q, tone, w], [hits, seg])  # empty query = tone only, no GPU call
         with gr.Tab("Timeline"):
             with gr.Row():
                 call = gr.Dropdown([(os.path.basename(c), c) for c in calls], value=calls[0], label="Call")
@@ -148,7 +214,20 @@ def ui(index_dir):
             player = gr.Audio(type="filepath", label="Full call")
             for ev in (call.change, tl_tone.change, app.load):
                 ev(timeline, [call, tl_tone], [plot, spikes, player])
-    app.launch(allowed_paths=sorted({os.path.dirname(c) for c in calls}))
+        with gr.Tab("Your call"):
+            up = gr.Audio(type="filepath", label=f"Upload a call (up to {MAX_UPLOAD_S // 60} min)")
+            with gr.Row():
+                up_q = gr.Textbox(label="What was said (optional)", placeholder="customer wants a refund")
+                up_tone = gr.Dropdown(labels, value="angry", label="How it was said")
+            up_go = gr.Button("Analyze", variant="primary")
+            up_plot = gr.LinePlot()
+            up_hits = gr.Dataframe(label="Top segments (seconds)", interactive=False)
+            up_go.click(run_upload, [up, up_q, up_tone], [up_plot, up_hits])
+    theme = gr.themes.Base(primary_hue="indigo", secondary_hue="rose", neutral_hue="slate",
+                           font=[gr.themes.GoogleFont("Inter", weights=(300, 400, 600)), "Helvetica Neue", "sans-serif"])
+    theme.set(**DARK, **{k + "_dark": v for k, v in DARK.items()})  # same values both modes: always dark
+    app.launch(allowed_paths=sorted({os.path.dirname(c) for c in calls}), theme=theme, css=CSS,
+               js="() => document.body.classList.add('dark')")
 
 
 def main():
